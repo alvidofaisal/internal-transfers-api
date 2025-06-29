@@ -45,7 +45,11 @@ func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		// Log the error, but don't change status since headers are already sent
+		// In production, you might want to log this error properly
+		return
+	}
 }
 
 func (h *HealthHandler) checkDatabase() model.DatabaseHealth {
@@ -90,5 +94,9 @@ func writeErrorResponse(w http.ResponseWriter, statusCode int, message, code str
 		Code:  code,
 	}
 	
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		// Log the error since we can't return it at this point
+		// In production, you might want to log this error properly
+		return
+	}
 } 

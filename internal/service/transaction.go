@@ -55,7 +55,13 @@ func (s *TransactionService) CreateTransaction(ctx context.Context, req *model.C
 	if err != nil {
 		return nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback() // Will be no-op if tx.Commit() succeeds
+	defer func() {
+		if err := tx.Rollback(); err != nil && err != sql.ErrTxDone {
+			// Log the rollback error, but don't override the main error
+			// In production, you might want to log this error properly
+			fmt.Printf("transaction rollback failed: %v\n", err)
+		}
+	}() // Will be no-op if tx.Commit() succeeds
 
 	// Validate accounts exist and get balances with row locks
 	if req.SourceAccountID != nil {

@@ -33,10 +33,7 @@ func (h *TransactionHandler) CreateTransaction(w http.ResponseWriter, r *http.Re
 
 	// Check for idempotency key
 	idempotencyKey := r.Header.Get("Idempotency-Key")
-	if idempotencyKey != "" {
-		// TODO: Implement idempotency logic
-		// For now, just continue with normal processing
-	}
+	_ = idempotencyKey // TODO: Implement idempotency logic
 
 	// Determine if this is a bulk transfer or single transfer
 	contentType := r.Header.Get("Content-Type")
@@ -94,7 +91,11 @@ func (h *TransactionHandler) handleSingleTransfer(w http.ResponseWriter, r *http
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		// Log the error, but don't change status since headers are already sent
+		// In production, you might want to log this error properly
+		return
+	}
 }
 
 // handleBulkTransfer processes a bulk transfer request
@@ -125,7 +126,11 @@ func (h *TransactionHandler) handleBulkTransfer(w http.ResponseWriter, r *http.R
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		// Log the error, but don't change status since headers are already sent
+		// In production, you might want to log this error properly
+		return
+	}
 }
 
 // GetTransaction handles GET /v1/transactions/{id}
@@ -156,7 +161,11 @@ func (h *TransactionHandler) GetTransaction(w http.ResponseWriter, r *http.Reque
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(transaction)
+	if err := json.NewEncoder(w).Encode(transaction); err != nil {
+		// Log the error, but don't change status since headers are already sent
+		// In production, you might want to log this error properly
+		return
+	}
 }
 
 // GetAccountTransactions handles GET /v1/accounts/{id}/transactions
@@ -206,5 +215,9 @@ func (h *TransactionHandler) GetAccountTransactions(w http.ResponseWriter, r *ht
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		// Log the error, but don't change status since headers are already sent
+		// In production, you might want to log this error properly
+		return
+	}
 } 

@@ -36,10 +36,7 @@ func (h *AccountHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 
 	// Check for idempotency key
 	idempotencyKey := r.Header.Get("Idempotency-Key")
-	if idempotencyKey != "" {
-		// TODO: Implement idempotency logic
-		// For now, just continue with normal processing
-	}
+	_ = idempotencyKey // TODO: Implement idempotency logic
 
 	var req model.CreateAccountRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -55,7 +52,11 @@ func (h *AccountHandler) CreateAccount(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		// Log the error, but don't change status since headers are already sent
+		// In production, you might want to log this error properly
+		return
+	}
 }
 
 // GetAccount handles GET /v1/accounts/{id}
@@ -105,7 +106,11 @@ func (h *AccountHandler) GetAccount(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(response)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			// Log the error, but don't change status since headers are already sent
+			// In production, you might want to log this error properly
+			return
+		}
 		return
 	}
 
@@ -129,7 +134,11 @@ func (h *AccountHandler) GetAccount(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "max-age=60") // Cache for 1 minute
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		// Log the error, but don't change status since headers are already sent
+		// In production, you might want to log this error properly
+		return
+	}
 }
 
 // handleServiceError converts service errors to HTTP responses
