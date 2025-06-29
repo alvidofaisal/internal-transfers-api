@@ -211,26 +211,151 @@ CREATE TABLE transactions (
 );
 ```
 
-## Architecture
+### System Architecture
 
-Uses hexagonal architecture with separate layers for HTTP handling, business logic, and data persistence.
-
+```mermaid
+graph TD
+    subgraph "API Layer"
+        API["REST API<br/>:8080"]
+        Health["/healthz"]
+        AccountsAPI["/v1/accounts"]
+        TransactionsAPI["/v1/transactions"]
+    end
+    
+    subgraph "Handler Layer"
+        AccountHandler["Account Handler"]
+        TransactionHandler["Transaction Handler"]
+        HealthHandler["Health Handler"]
+    end
+    
+    subgraph "Service Layer"
+        AccountService["Account Service"]
+        TransactionService["Transaction Service"]
+    end
+    
+    subgraph "Repository Layer"
+        AccountRepo["Account Repository"]
+        TransactionRepo["Transaction Repository"]
+    end
+    
+    subgraph "Database"
+        PostgreSQL["PostgreSQL"]
+        AccountsTable["accounts table"]
+        TransactionsTable["transactions table"]
+    end
+    
+    subgraph "Models"
+        AccountModel["Account Model"]
+        TransactionModel["Transaction Model"]
+    end
+    
+    API --> Health
+    API --> AccountsAPI
+    API --> TransactionsAPI
+    
+    Health --> HealthHandler
+    AccountsAPI --> AccountHandler
+    TransactionsAPI --> TransactionHandler
+    
+    AccountHandler --> AccountService
+    TransactionHandler --> TransactionService
+    
+    AccountService --> AccountRepo
+    TransactionService --> TransactionRepo
+    TransactionService --> AccountRepo
+    
+    AccountRepo --> PostgreSQL
+    TransactionRepo --> PostgreSQL
+    
+    PostgreSQL --> AccountsTable
+    PostgreSQL --> TransactionsTable
+    
+    AccountService -.-> AccountModel
+    TransactionService -.-> TransactionModel
+    AccountRepo -.-> AccountModel
+    TransactionRepo -.-> TransactionModel
+    
+    classDef apiLayer fill:#e1f5fe
+    classDef handlerLayer fill:#f3e5f5
+    classDef serviceLayer fill:#e8f5e8
+    classDef repoLayer fill:#fff3e0
+    classDef dbLayer fill:#ffebee
+    classDef modelLayer fill:#f5f5f5
+    
+    class API,Health,AccountsAPI,TransactionsAPI apiLayer
+    class AccountHandler,TransactionHandler,HealthHandler handlerLayer
+    class AccountService,TransactionService serviceLayer
+    class AccountRepo,TransactionRepo repoLayer
+    class PostgreSQL,AccountsTable,TransactionsTable dbLayer
+    class AccountModel,TransactionModel modelLayer
 ```
-Handler -> Service -> Repository -> PostgreSQL
+
+### Business Flow
+
+```mermaid
+flowchart TD
+    Start([User Request])
+    
+    subgraph "Account Operations"
+        CreateAccount["POST /v1/accounts<br/>Create Account<br/>with Initial Balance"]
+        GetAccount["GET /v1/accounts/{id}<br/>Get Account Details"]
+        GetHistory["GET /v1/accounts/{id}?at=timestamp<br/>Get Historical Balance"]
+    end
+    
+    subgraph "Transaction Operations"
+        Deposit["Deposit<br/>(no source account)"]
+        Transfer["Transfer<br/>(between accounts)"]
+        BulkTransfer["Bulk Transfer<br/>(multiple transfers)"]
+        GetTransaction["GET /v1/transactions/{id}<br/>Get Transaction Details"]
+    end
+    
+    subgraph "Business Logic"
+        ValidateBalance["Validate<br/>Sufficient Funds"]
+        LockAccounts["Lock Accounts<br/>(Row-level locking)"]
+        UpdateBalances["Update Account<br/>Balances"]
+        CreateTxRecord["Create Transaction<br/>Record"]
+    end
+    
+    subgraph "Database"
+        AccountsDB[("accounts table<br/>• id (UUID)<br/>• balance (NUMERIC)<br/>• created_at<br/>• updated_at")]
+        TransactionsDB[("transactions table<br/>• id (UUID)<br/>• source_account_id<br/>• destination_account_id<br/>• amount (NUMERIC)<br/>• reference<br/>• status")]
+    end
+    
+    Start --> CreateAccount
+    Start --> GetAccount
+    Start --> GetHistory
+    Start --> Deposit
+    Start --> Transfer
+    Start --> BulkTransfer
+    Start --> GetTransaction
+    
+    CreateAccount --> AccountsDB
+    GetAccount --> AccountsDB
+    GetHistory --> AccountsDB
+    
+    Deposit --> ValidateBalance
+    Transfer --> ValidateBalance
+    BulkTransfer --> ValidateBalance
+    
+    ValidateBalance --> LockAccounts
+    LockAccounts --> UpdateBalances
+    UpdateBalances --> CreateTxRecord
+    
+    UpdateBalances --> AccountsDB
+    CreateTxRecord --> TransactionsDB
+    
+    GetTransaction --> TransactionsDB
+    
+    classDef accountOps fill:#e3f2fd
+    classDef transactionOps fill:#f1f8e9
+    classDef businessLogic fill:#fff8e1
+    classDef database fill:#fce4ec
+    
+    class CreateAccount,GetAccount,GetHistory accountOps
+    class Deposit,Transfer,BulkTransfer,GetTransaction transactionOps
+    class ValidateBalance,LockAccounts,UpdateBalances,CreateTxRecord businessLogic
+    class AccountsDB,TransactionsDB database
 ```
-
-- **Handler**: HTTP request/response
-- **Service**: Business logic and validation  
-- **Repository**: Database operations
-- **Models**: Data structures
-
-## Notes
-
-- Uses `NUMERIC(38,10)` for precise decimal handling
-- SERIALIZABLE isolation level for financial transactions
-- Row-level locking to prevent race conditions
-- No authentication (internal service)
-- Deposits supported by omitting source_account_id
 
 ## Docker
 
