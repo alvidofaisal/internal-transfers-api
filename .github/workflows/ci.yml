@@ -105,7 +105,7 @@ jobs:
           -o bin/server cmd/server/main.go
 
     - name: Upload build artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: server-binary
         path: bin/server 
